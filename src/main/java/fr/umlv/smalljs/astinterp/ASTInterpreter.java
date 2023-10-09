@@ -24,7 +24,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
-import static fr.umlv.smalljs.rt.JSObject.UNDEFINED;
+import static fr.umlv.smalljs.rt.JSObject.*;
 import static java.util.stream.Collectors.joining;
 
 public class ASTInterpreter {
@@ -40,43 +40,77 @@ public class ASTInterpreter {
       case Block(List<Expr> instrs, int lineNumber) -> {
 				//throw new UnsupportedOperationException("TODO Block");
         // TODO loop over all instructions
+        for (var instr : instrs){
+          visit(instr,env);
+        }
         yield UNDEFINED;
       }
       case Literal<?>(Object value, int lineNumber) -> {
-        throw new UnsupportedOperationException("TODO Literal");
+        yield value;
       }
       case FunCall(Expr qualifier, List<Expr> args, int lineNumber) -> {
-        throw new UnsupportedOperationException("TODO FunCall");
+        var funMaybe = visit(qualifier,env);
+
+        if (!(funMaybe instanceof JSObject jsObject)){
+          throw new Failure("not a function "+funMaybe);
+
+        }
+          var values = args.stream().map(v -> visit(v,env)).toArray();
+          yield jsObject.invoke(UNDEFINED,values);
+
       }
       case LocalVarAccess(String name, int lineNumber) -> {
-        throw new UnsupportedOperationException("TODO LocalVarAccess");
+        yield env.lookup(name);
       }
       case LocalVarAssignment(String name, Expr expr, boolean declaration, int lineNumber) -> {
-        throw new UnsupportedOperationException("TODO LocalVarAssignment");
+        if (declaration && env.lookup(name) != UNDEFINED){
+          throw new Failure("variable "+name+" already defined at "+lineNumber);
+        }
+
+        var value = visit(expr,env);
+        env.register(name,value);
+        yield UNDEFINED;
       }
       case Fun(Optional<String> optName, List<String> parameters, Block body, int lineNumber) -> {
-				throw new UnsupportedOperationException("TODO Fun");
-        //var functionName = optName.orElse("lambda");
-        //Invoker invoker = new Invoker() {
-        //  @Override
-        //  public Object invoke(JSObject self, Object receiver, Object... args) {
-        //    // check the arguments length
-        //    // create a new environment
-        //    // add this and all the parameters
-        //    // visit the body
-        //  }
-        //};
-        // create the JS function with the invoker
-        // register it if necessary
-        // yield the function
+				//throw new UnsupportedOperationException("TODO Fun");
+        var functionName = optName.orElse("lambda");
+        Invoker invoker = new Invoker() {
+          @Override
+          public Object invoke(JSObject self, Object receiver, Object... args) {
+            if (args.length != parameters.size()){
+              throw new Failure("wrong number of arguments "+lineNumber);
+            }
+            var env2 = newEnv(env);
+            env2.register("this", receiver);
+            for(var i = 0; i< args.length;i++){
+              env2.register(parameters.get(i), args[i]);
+            }
+            try {
+              return visit(body,env2);
+            }
+            catch (ReturnError returnError) {
+              return returnError.getValue();
+            }
+          }
+        };
+        var function = JSObject.newFunction(functionName,invoker);
+        optName.ifPresent(s -> env.register(s, function));
+        yield function;
       }
       case Return(Expr expr, int lineNumber) -> {
-				throw new UnsupportedOperationException("TODO Return");
+        throw new ReturnError(visit(expr,env));
       }
       case If(Expr condition, Block trueBlock, Block falseBlock, int lineNumber) -> {
-				throw new UnsupportedOperationException("TODO If");
+        var val = visit(condition,env);
+        if (! (val instanceof Integer intVal )){
+          throw new Failure("pas boolean" + val);
+        }
+        if (intVal == 1){
+          yield visit(trueBlock,env);
+        }
+        yield visit(falseBlock,env);
       }
-      case New(Map<String, Expr> initMap, int lineNumber) -> {
+      case New(Map<String, Expr> initMap, int  lineNumber) -> {
 				throw new UnsupportedOperationException("TODO New");
       }
       case FieldAccess(Expr receiver, String name, int lineNumber) -> {

@@ -25,7 +25,7 @@ public class ASTInterpreterTests {
     return outStream.toString(UTF_8).replace("\r\n", "\n");
   }
 
-  /*
+
   @Tag("Q2") @Test
   public void helloString() {
     assertEquals("", execute("\"hello\"\n"));
@@ -232,7 +232,7 @@ public class ASTInterpreterTests {
             print(f(7));
             """));
   }
-  
+
   @Tag("Q12") @Test
   public void callFibo() {
     assertEquals("21\n", execute("""
@@ -282,7 +282,7 @@ public class ASTInterpreterTests {
             print(f());
             """));
   }
-  
+
   @Tag("Q13") @Test
   public void createAnObject() {
     assertEquals("""
@@ -300,7 +300,7 @@ public class ASTInterpreterTests {
                 print(o);
                 """));
   }
-  
+  /*
   @Tag("Q14") @Test
   public void createAnObjectFromAVariableValue() {
     assertEquals("""
