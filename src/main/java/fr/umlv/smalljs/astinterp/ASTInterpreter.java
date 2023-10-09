@@ -111,17 +111,47 @@ public class ASTInterpreter {
         yield visit(falseBlock,env);
       }
       case New(Map<String, Expr> initMap, int  lineNumber) -> {
-				throw new UnsupportedOperationException("TODO New");
+        var vals = JSObject.newObject(null);
+
+        for (var key : initMap.keySet()){
+          vals.register(key,visit(initMap.get(key),env));
+        }
+        yield vals;
       }
+
       case FieldAccess(Expr receiver, String name, int lineNumber) -> {
-        throw new UnsupportedOperationException("TODO FieldAccess");
+        var obj =visit(receiver,env);
+        if (! (obj instanceof JSObject objtemp)){
+          throw new Failure("not a object");
+        }
+        yield objtemp.lookup(name);
       }
       case FieldAssignment(Expr receiver, String name, Expr expr, int lineNumber) -> {
-        throw new UnsupportedOperationException("TODO FieldAssignment");
+        var obj =visit(receiver,env);
+        if (! (obj instanceof JSObject objtemp)){
+          throw new Failure("not a object");
+        }
+        objtemp.register(name,visit(expr,env));
+        yield UNDEFINED;
       }
       case MethodCall(Expr receiver, String name, List<Expr> args, int lineNumber) -> {
-        throw new UnsupportedOperationException("TODO MethodCall");
+        var obj =visit(receiver,env);
+        if (! (obj instanceof JSObject objtemp)){
+          throw new Failure("dzad not a object");
+        }
+        System.out.println(objtemp);
+        var fun =  objtemp.lookup(name);
+        if (! (fun instanceof JSObject objtemp2)){
+          throw new Failure("dzad not a object");
+        }
+        System.out.println(objtemp2);
+
+        var values = args.stream().map(v -> visit(v,env)).toArray();
+
+        yield objtemp2.invoke(objtemp,values);
       }
+
+
     };
   }
 
