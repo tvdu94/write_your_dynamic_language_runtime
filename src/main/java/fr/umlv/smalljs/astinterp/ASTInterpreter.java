@@ -139,19 +139,15 @@ public class ASTInterpreter {
         if (! (obj instanceof JSObject objtemp)){
           throw new Failure("dzad not a object");
         }
-        System.out.println(objtemp);
         var fun =  objtemp.lookup(name);
         if (! (fun instanceof JSObject objtemp2)){
           throw new Failure("dzad not a object");
         }
-        System.out.println(objtemp2);
 
         var values = args.stream().map(v -> visit(v,env)).toArray();
 
         yield objtemp2.invoke(objtemp,values);
       }
-
-
     };
   }
 
