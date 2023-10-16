@@ -23,8 +23,8 @@ public class StackInterpreterTests {
     StackInterpreter.interpret(script, new PrintStream(outStream, false, UTF_8));
     return outStream.toString(UTF_8).replace("\r\n", "\n");
   }
+/*
 
-  /*
   @Tag("Q2") @Test
   public void helloString() {
     assertEquals("", execute("\"hello\"\n"));
