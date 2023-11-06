@@ -6,6 +6,7 @@ import static java.lang.invoke.MethodHandles.foldArguments;
 import static java.lang.invoke.MethodHandles.guardWithTest;
 import static java.lang.invoke.MethodHandles.insertArguments;
 import static java.lang.invoke.MethodHandles.invoker;
+import static java.lang.invoke.MethodType.genericMethodType;
 import static java.lang.invoke.MethodType.methodType;
 
 import java.lang.invoke.CallSite;
@@ -47,14 +48,20 @@ public class RT {
   }
 
   public static CallSite bsm_funcall(Lookup lookup, String name, MethodType type) {
-    throw new UnsupportedOperationException("TODO bsm_funcall");
+    var invType = genericMethodType(type.parameterCount()-1);
+    MethodHandle exactInvoker =MethodHandles.dropArguments(MethodHandles.invoker(invType),1, Object.class);
+    MethodHandle getMH = GET_MH.asType(methodType(MethodHandle.class,Object.class));
+    MethodHandle target = MethodHandles.foldArguments(exactInvoker,getMH);
+    return new ConstantCallSite(target);
   }
 
   public static CallSite bsm_lookup(Lookup lookup, String name, MethodType type, String functionName) {
-    throw new UnsupportedOperationException("TODO bsm_lookup");
-    //var classLoader = (FunClassLoader) lookup.lookupClass().getClassLoader();
-    //var globalEnv = classLoader.getGlobal();
-    // TODO
+    //throw new UnsupportedOperationException("TODO bsm_lookup");
+    var classLoader = (FunClassLoader) lookup.lookupClass().getClassLoader();
+    var globalEnv = classLoader.getGlobal();
+    var target = MethodHandles.insertArguments(LOOKUP, 0, globalEnv, functionName);
+    return new ConstantCallSite(target);
+
   }
 
   public static Object bsm_fun(Lookup lookup, String name, Class<?> type, int funId) {

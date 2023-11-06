@@ -47,39 +47,39 @@ public class StackInterpreterGCTests {
     return outStream.toString(UTF_8).replace("\r\n", "\n");
   }
 
-//  @Tag("Q2") @Test
-//  public void gcTest() {
-//  	var dict = new Dictionary();
-//  	var pointClass = JSObject.newObject(null);
-//  	pointClass.register("x", 0);
-//  	pointClass.register("y", 1);
-//  	int[] instrs = {
-//  		/* 0:*/ CONST, encodeSmallInt(100),
-//  	  /* 2:*/ STORE, 1,
-//
-//  	  /* 4:*/ LOAD, 1,
-//  	  /* 6:*/ JUMP_IF_FALSE, 29,
-//
-//  	  /* 8:*/ CONST, encodeSmallInt(1),
-//  	  /*10:*/ CONST, encodeSmallInt(2),
-//  	  /*12:*/ NEW, encodeDictObject(pointClass, dict),
-//  	  /*14:*/ POP,
-//
-//  	  /*15:*/ LOOKUP, encodeDictObject("-", dict),
-//  	  /*17:*/ CONST, encodeDictObject(UNDEFINED, dict),
-//  	  /*19:*/ LOAD, 1,
-//  	  /*21:*/ CONST, encodeSmallInt(1),
-//  	  /*23:*/ FUNCALL, 2,
-//  	  /*25:*/ STORE, 1,
-//
-//  	  /*27:*/ GOTO, 4,
-//
-//  	  /*29:*/ CONST, encodeDictObject(UNDEFINED, dict),
-//  	  /*31:*/ RET
-//  	};
-//    execute(new Code(instrs, 1, 2), dict);
-//  }
-//
+  @Tag("Q2") @Test
+  public void gcTest() {
+  	var dict = new Dictionary();
+  	var pointClass = JSObject.newObject(null);
+  	pointClass.register("x", 0);
+  	pointClass.register("y", 1);
+  	int[] instrs = {
+  		/* 0:*/ CONST, encodeSmallInt(100),
+  	  /* 2:*/ STORE, 1,
+
+  	  /* 4:*/ LOAD, 1,
+  	  /* 6:*/ JUMP_IF_FALSE, 29,
+
+  	  /* 8:*/ CONST, encodeSmallInt(1),
+  	  /*10:*/ CONST, encodeSmallInt(2),
+  	  /*12:*/ NEW, encodeDictObject(pointClass, dict),
+  	  /*14:*/ POP,
+
+  	  /*15:*/ LOOKUP, encodeDictObject("-", dict),
+  	  /*17:*/ CONST, encodeDictObject(UNDEFINED, dict),
+  	  /*19:*/ LOAD, 1,
+  	  /*21:*/ CONST, encodeSmallInt(1),
+  	  /*23:*/ FUNCALL, 2,
+  	  /*25:*/ STORE, 1,
+
+  	  /*27:*/ GOTO, 4,
+
+  	  /*29:*/ CONST, encodeDictObject(UNDEFINED, dict),
+  	  /*31:*/ RET
+  	};
+    execute(new Code(instrs, 1, 2), dict);
+  }
+
 //  @Tag("Q3") @Test
 //  public void gcTestRewriteField() {
 //  	var dict = new Dictionary();
