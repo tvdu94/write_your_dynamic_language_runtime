@@ -10,6 +10,7 @@ import java.io.PrintStream;
 import java.io.StringReader;
 import java.nio.charset.StandardCharsets;
 
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 
@@ -92,12 +93,12 @@ public class JVMInterpreterTests {
             print('hello', me);
             """));
   }
-  /*
+
   @Tag("Q9") @Test
   public void printAVariableDefinedAfter() {
     assertEquals("undefined\n", execute("print(a);\nvar a = 2;\n"));
   }
-  
+
   @Tag("Q10") @Test
   public void callAUserDefinedFunctionAndPrint() {
     assertEquals("3\n", execute("""
@@ -278,7 +279,7 @@ public class JVMInterpreterTests {
             print(f());
             """));
   }
-
+/*
   @Tag("Q13") @Test
   public void createAnObject() {
     assertEquals("""

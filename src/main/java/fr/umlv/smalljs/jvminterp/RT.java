@@ -47,36 +47,83 @@ public class RT {
     return constant;
   }
 
-  public static CallSite bsm_funcall(Lookup lookup, String name, MethodType type) {
-    var invType = genericMethodType(type.parameterCount()-1);
-    MethodHandle exactInvoker =MethodHandles.dropArguments(MethodHandles.invoker(invType),1, Object.class);
-    MethodHandle getMH = GET_MH.asType(methodType(MethodHandle.class,Object.class));
-    MethodHandle target = MethodHandles.foldArguments(exactInvoker,getMH);
-    return new ConstantCallSite(target);
-  }
+//  public static CallSite bsm_funcall(Lookup lookup, String name, MethodType type) {
+//    var invType = genericMethodType(type.parameterCount()-1);
+//    MethodHandle exactInvoker =MethodHandles.dropArguments(MethodHandles.invoker(invType),1, Object.class);
+//    MethodHandle getMH = GET_MH.asType(methodType(MethodHandle.class,Object.class));
+//    MethodHandle target = MethodHandles.foldArguments(exactInvoker,getMH);
+//    return new ConstantCallSite(target);
+//  }
+public static CallSite bsm_funcall(Lookup lookup, String name, MethodType type) {
+  return new InliningCache(type);
+}
 
+  private static class InliningCache extends MutableCallSite {
+    private static final MethodHandle SLOW_PATH, POINTER_CHECK;
+    static {
+      var lookup = MethodHandles.lookup();
+      try {
+        SLOW_PATH = lookup.findVirtual(InliningCache.class, "slowPath", methodType(MethodHandle.class, Object.class, Object.class));
+        POINTER_CHECK = lookup.findStatic(InliningCache.class, "pointerCheck", methodType(boolean.class, Object.class, Object.class));
+      } catch (NoSuchMethodException | IllegalAccessException e) {
+        throw new AssertionError(e);
+      }
+    }
+
+    public InliningCache(MethodType type) {
+      super(type);
+      setTarget(MethodHandles.foldArguments(MethodHandles.exactInvoker(type), SLOW_PATH.bindTo(this)));
+    }
+
+    private static boolean pointerCheck (Object o1, Object o2){
+      return o1 == o2;
+    }
+
+    private MethodHandle slowPath(Object qualifier, Object receiver) {
+      var jsObject = (JSObject)qualifier;
+      //System.out.println("Slow path "+qualifier);
+
+      var mh = jsObject.getMethodHandle();
+      var varargs = mh.isVarargsCollector();
+      mh = dropArguments(mh, 0,Object.class); //drop qualifier
+      if (varargs){
+        mh = mh.asVarargsCollector(Object[].class);
+      }
+
+      if (!varargs && !mh.type().equals(type())){
+       throw new Failure("wrong number of arguments expected "+ mh.type().parameterCount() + " but found "+ type().parameterCount());
+      }
+
+      var target = mh.asType(type());
+      var test = POINTER_CHECK.bindTo(qualifier);
+      MethodHandle guard = guardWithTest(test, target, getTarget() );
+      setTarget(guard);
+      return mh.asType(type());
+
+    }
+  }
   public static CallSite bsm_lookup(Lookup lookup, String name, MethodType type, String functionName) {
     //throw new UnsupportedOperationException("TODO bsm_lookup");
     var classLoader = (FunClassLoader) lookup.lookupClass().getClassLoader();
     var globalEnv = classLoader.getGlobal();
     var target = MethodHandles.insertArguments(LOOKUP, 0, globalEnv, functionName);
     return new ConstantCallSite(target);
-
   }
 
   public static Object bsm_fun(Lookup lookup, String name, Class<?> type, int funId) {
-    throw new UnsupportedOperationException("TODO bsm_fun");
-    //var classLoader = (FunClassLoader) lookup.lookupClass().getClassLoader();
-    //var globalEnv = classLoader.getGlobal();
-    //var fun = classLoader.getDictionary().lookupAndClear(funId);
-    //return ByteCodeRewriter.createFunction(fun.name().orElse("lambda"), fun.parameters(), fun.body(), globalEnv);
+    //throw new UnsupportedOperationException("TODO bsm_fun");
+    var classLoader = (FunClassLoader) lookup.lookupClass().getClassLoader();
+    var globalEnv = classLoader.getGlobal();
+    var fun = classLoader.getDictionary().lookupAndClear(funId);
+    return ByteCodeRewriter.createFunction(fun.name().orElse("lambda"), fun.parameters(), fun.body(), globalEnv);
   }
 
   public static CallSite bsm_register(Lookup lookup, String name, MethodType type, String functionName) {
-    throw new UnsupportedOperationException("TODO bsm_register");
-    //var classLoader = (FunClassLoader) lookup.lookupClass().getClassLoader();
-    //var globalEnv = classLoader.getGlobal();
-    //TODO
+//    throw new UnsupportedOperationException("TODO bsm_register");
+    var classLoader = (FunClassLoader) lookup.lookupClass().getClassLoader();
+    var globalEnv = classLoader.getGlobal();
+    var target = insertArguments(REGISTER,0, globalEnv, functionName);
+    return new ConstantCallSite(target);
   }
 
   @SuppressWarnings("unused")  // used by a method handle
@@ -84,8 +131,8 @@ public class RT {
     return o != null && o != UNDEFINED && o != Boolean.FALSE;
   }
   public static CallSite bsm_truth(Lookup lookup, String name, MethodType type) {
-    throw new UnsupportedOperationException("TODO bsm_truth");
-    //TODO
+    //throw new UnsupportedOperationException("TODO bsm_truth");
+    return new ConstantCallSite(TRUTH);
   }
 
   public static CallSite bsm_get(Lookup lookup, String name, MethodType type, String fieldName) {

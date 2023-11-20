@@ -225,6 +225,7 @@ public class InstrRewriter {
 				// emit a visit of the expression
 				visit(expr,env,buffer,dict,globalEnv);
 				// emit a RET
+
 				buffer.emit(RET);
 			}
 			case If(Expr condition, Block trueBlock, Block falseBlock, int lineNumber) -> {

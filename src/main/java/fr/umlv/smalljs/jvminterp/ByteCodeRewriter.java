@@ -2,21 +2,7 @@ package fr.umlv.smalljs.jvminterp;
 
 import static java.lang.invoke.MethodType.genericMethodType;
 import static java.nio.charset.StandardCharsets.UTF_8;
-import static org.objectweb.asm.Opcodes.ACC_PUBLIC;
-import static org.objectweb.asm.Opcodes.ACC_STATIC;
-import static org.objectweb.asm.Opcodes.ACC_SUPER;
-import static org.objectweb.asm.Opcodes.ACONST_NULL;
-import static org.objectweb.asm.Opcodes.ALOAD;
-import static org.objectweb.asm.Opcodes.ARETURN;
-import static org.objectweb.asm.Opcodes.ASTORE;
-import static org.objectweb.asm.Opcodes.DUP;
-import static org.objectweb.asm.Opcodes.GOTO;
-import static org.objectweb.asm.Opcodes.H_INVOKESTATIC;
-import static org.objectweb.asm.Opcodes.IFEQ;
-import static org.objectweb.asm.Opcodes.INVOKESTATIC;
-import static org.objectweb.asm.Opcodes.INVOKEVIRTUAL;
-import static org.objectweb.asm.Opcodes.POP;
-import static org.objectweb.asm.Opcodes.V11;
+import static org.objectweb.asm.Opcodes.*;
 
 import java.io.PrintWriter;
 import java.lang.invoke.CallSite;
@@ -239,16 +225,15 @@ public class ByteCodeRewriter {
           // visit the expression
           visit(expr,env,mv,dictionary);
           // lookup that name in the environment
+          var slotOrUndefined = env.lookup(name);
           if (!declaration) {
-            var slotOrUndefined = env.lookup(name);
-
-
             // if it does not exist throw a Failure
             if (slotOrUndefined == JSObject.UNDEFINED) {
               throw new Failure("variable "+name+" already defined at "+lineNumber);
             }
-            // otherwise STORE the top of the stack at the local variable slot
           }
+          // otherwise STORE the top of the stack at the local variable slot
+          mv.visitVarInsn(ASTORE,(int) slotOrUndefined);
         }
         case LocalVarAccess(String name, int lineNumber) -> {
           //throw new UnsupportedOperationException("TODO LocalVarAccess");
@@ -270,22 +255,45 @@ public class ByteCodeRewriter {
           Optional<String> optName = fun.name();
           List<String> parameters = fun.parameters();
           Block body = fun.body();
-          throw new UnsupportedOperationException("TODO Fun");
+          //throw new UnsupportedOperationException("TODO Fun");
           // register the fun inside the fun directory and get the corresponding id
+          var funId = dictionary.register(fun);
           // emit a LDC to load the function corresponding to the id at runtime
+          var funConst = new ConstantDynamic("fun","Ljava/lang/Object;",BSM_FUN,funId);
+          mv.visitLdcInsn(funConst);
           // generate an invokedynamic doing a register with the function name
+
+          optName.ifPresent(name -> {
+            mv.visitInsn(DUP);
+            mv.visitInvokeDynamicInsn("register", "(Ljava/lang/Object;)V", BSM_REGISTER, name);
+          });
+
         }
         case Return(Expr expr, int lineNumber) -> {
           // throw new UnsupportedOperationException("TODO Return");
           // visit the return expression
+          visit(expr,env,mv,dictionary);
           // generate the bytecode
+          mv.visitInsn(ARETURN);
         }
         case If(Expr condition, Block trueBlock, Block falseBlock, int lineNumber) -> {
-          throw new UnsupportedOperationException("TODO If");
+          //throw new UnsupportedOperationException("TODO If");
           // visit the condition
+          visit(condition,env,mv,dictionary);
           // generate an invokedynamic to transform an Object to a boolean using BSM_TRUTH
+          mv.visitInvokeDynamicInsn("check","(Ljava/lang/Object;)Z", BSM_TRUTH);
           // visit the true block
+          var falseLabel = new Label();
+          mv.visitJumpInsn(IFEQ,falseLabel);
+          visit(trueBlock,env,mv,dictionary);
+
+          var endLabel = new Label();
+          mv.visitJumpInsn(GOTO, endLabel);
           // visit the false block
+          mv.visitLabel(falseLabel);
+          visit(falseBlock,env,mv,dictionary);
+          mv.visitLabel(endLabel);
+
         }
         case New(Map<String, Expr> initMap, int lineNumber) -> {
           throw new UnsupportedOperationException("TODO New");
