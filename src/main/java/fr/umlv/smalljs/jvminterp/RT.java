@@ -96,12 +96,35 @@ public static CallSite bsm_funcall(Lookup lookup, String name, MethodType type) 
 
       var target = mh.asType(type());
       var test = POINTER_CHECK.bindTo(qualifier);
-      MethodHandle guard = guardWithTest(test, target, getTarget() );
+      MethodHandle guard = guardWithTest(test, target, new InliningCache(type()).dynamicInvoker() );
       setTarget(guard);
       return mh.asType(type());
 
     }
   }
+
+
+/*
+  public static CallSite bsm_get(Lookup lookup, String name, MethodType type, String fieldName) {
+    return new ConstantCallSite(insertArguments(LOOKUP, 1, fieldName).asType(type));
+  }*/
+
+  public static CallSite bsm_set(Lookup lookup, String name, MethodType type, String fieldName) {
+    return new ConstantCallSite(insertArguments(REGISTER, 1, fieldName).asType(type));
+  }
+
+  @SuppressWarnings("unused")  // used by a method handle
+  private static MethodHandle lookupMethodHandle(JSObject receiver, String fieldName) {
+    var function = (JSObject)receiver.lookup(fieldName);
+    return function.getMethodHandle();
+  }
+
+  public static CallSite bsm_methodcall(Lookup lookup, String name, MethodType type) {
+    var combiner = MethodHandles.insertArguments(METH_LOOKUP_MH, 1, name).asType(methodType(MethodHandle.class, Object.class));
+    var target = MethodHandles.foldArguments(invoker(type), combiner);
+    return new ConstantCallSite(target);
+  }
+
   public static CallSite bsm_lookup(Lookup lookup, String name, MethodType type, String functionName) {
     //throw new UnsupportedOperationException("TODO bsm_lookup");
     var classLoader = (FunClassLoader) lookup.lookupClass().getClassLoader();
@@ -134,27 +157,63 @@ public static CallSite bsm_funcall(Lookup lookup, String name, MethodType type) 
     //throw new UnsupportedOperationException("TODO bsm_truth");
     return new ConstantCallSite(TRUTH);
   }
-
   public static CallSite bsm_get(Lookup lookup, String name, MethodType type, String fieldName) {
-    throw new UnsupportedOperationException("TODO bsm_get");
-    //TODO
+    //return new ConstantCallSite(insertArguments(LOOKUP, 1, fieldName).asType(type));
+    return new InliningFieldCache(type, fieldName);
   }
 
-  public static CallSite bsm_set(Lookup lookup, String name, MethodType type, String fieldName) {
-    throw new UnsupportedOperationException("TODO bsm_set");
-    //TODO
+  private static class InliningFieldCache extends MutableCallSite {
+    private static final MethodHandle SLOW_PATH, LAYOUT_CHECK, FAST_ACCESS;
+    static {
+      var lookup = MethodHandles.lookup();
+      try {
+        SLOW_PATH = lookup.findVirtual(InliningFieldCache.class, "slowPath", methodType(Object.class, Object.class));
+        LAYOUT_CHECK = lookup.findStatic(InliningFieldCache.class, "layoutCheck", methodType(boolean.class, ArrayMap.Layout.class, Object.class));
+        FAST_ACCESS = lookup.findVirtual(JSObject.class, "fastAccess", methodType(Object.class, int.class));
+      } catch (NoSuchMethodException | IllegalAccessException e) {
+        throw new AssertionError(e);
+      }
+    }
+
+    private final String fieldName;
+
+    public InliningFieldCache(MethodType type, String fieldName) {
+      super(type);
+      this.fieldName = fieldName;
+      setTarget(SLOW_PATH.bindTo(this));
+    }
+
+    @SuppressWarnings("unused")  // called by a MH
+    private static boolean layoutCheck(ArrayMap.Layout layout, Object o) {
+      return layout == ((JSObject)o).getLayout();
+    }
+
+    @SuppressWarnings("unused")  // called by a MH
+    private Object slowPath(Object receiver) {
+      var jsObject = (JSObject)receiver;
+
+      // classical access to the value
+      //var value = jsObject.lookup(fieldName);
+
+      // fast access
+      var layout = jsObject.getLayout();
+      var slot = layout.slot(fieldName);   // may be -1 !
+      if (slot == -1){
+        return UNDEFINED;
+      }
+
+
+      var value = jsObject.fastAccess(slot);
+
+
+      var test = LAYOUT_CHECK.bindTo(layout);
+      var target = insertArguments(FAST_ACCESS,1,slot).asType(methodType(Object.class,Object.class));
+      var fallback = new InliningFieldCache(type(), fieldName).dynamicInvoker();
+      MethodHandle guard = guardWithTest(test,target,fallback);
+      setTarget(guard);
+
+      return value;
+    }
   }
 
-  @SuppressWarnings("unused")  // used by a method handle
-  private static MethodHandle lookupMethodHandle(JSObject receiver, String fieldName) {
-    var function = (JSObject)receiver.lookup(fieldName);
-    return function.getMethodHandle();
-  }
-
-  public static CallSite bsm_methodcall(Lookup lookup, String name, MethodType type) {
-    throw new UnsupportedOperationException("TODO bsm_methodcall");
-    //var combiner = insertArguments(METH_LOOKUP_MH, 1, name).asType(methodType(MethodHandle.class, Object.class));
-    //var target = foldArguments(invoker(type), combiner);
-    //return new ConstantCallSite(target);
-  }
 }

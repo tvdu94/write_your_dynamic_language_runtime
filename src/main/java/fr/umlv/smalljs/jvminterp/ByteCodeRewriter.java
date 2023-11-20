@@ -296,29 +296,55 @@ public class ByteCodeRewriter {
 
         }
         case New(Map<String, Expr> initMap, int lineNumber) -> {
-          throw new UnsupportedOperationException("TODO New");
+          //throw new UnsupportedOperationException("TODO New");
           // call newObject with an INVOKESTATIC
+          mv.visitInsn(ACONST_NULL);
+          mv.visitMethodInsn(INVOKESTATIC,"fr/umlv/smalljs/rt/JSObject","newObject","(Lfr/umlv/smalljs/rt/JSObject;)Lfr/umlv/smalljs/rt/JSObject;",false);
           // for each initialization expression
+          initMap.forEach((s,expr)-> {
+
+            mv.visitInsn(DUP);
             // generate a string with the key
+            mv.visitLdcInsn(s);
+            visit(expr,env,mv,dictionary);
+
             // call register on the JSObject
+            mv.visitMethodInsn(INVOKEVIRTUAL, "fr/umlv/smalljs/rt/JSObject", "register", "(Ljava/lang/String;Ljava/lang/Object;)V",false);
+          });
+
+
         }
         case FieldAccess(Expr receiver, String name, int lineNumber) -> {
-          throw new UnsupportedOperationException("TODO FieldAccess");
+          //throw new UnsupportedOperationException("TODO FieldAccess");
           // visit the receiver
+          visit(receiver,env,mv,dictionary);
           // generate an invokedynamic that goes a get through BSM_GET
+          mv.visitInvokeDynamicInsn("get_"+name,"(Ljava/lang/Object;)Ljava/lang/Object;", BSM_GET, name);
         }
         case FieldAssignment(Expr receiver, String name, Expr expr, int lineNumber) -> {
-          throw new UnsupportedOperationException("TODO FieldAssignment");
+          //throw new UnsupportedOperationException("TODO FieldAssignment");
           // visit the receiver
+          visit(receiver,env,mv,dictionary);
           // visit the expression
+          visit(expr,env,mv,dictionary);
+          mv.visitInvokeDynamicInsn("set_"+name,"(Ljava/lang/Object;Ljava/lang/Object;)Ljava/lang/Object;", BSM_SET, name);
+
         }
         case MethodCall(Expr receiver, String name, List<Expr> args, int lineNumber) -> {
-          throw new UnsupportedOperationException("TODO MethodCall");
+          //throw new UnsupportedOperationException("TODO MethodCall");
           // visit the receiver
+          visit(receiver,env,mv,dictionary);
+
           // for each argument
+          for (Expr expr : args){
             // visit the argument
+            visit(expr,env,mv,dictionary);
+          }
           // generate an invokedynamic that call BSM_METHODCALL
+          var desc = MethodType.genericMethodType(args.size()+1).toMethodDescriptorString();
+          mv.visitInvokeDynamicInsn(name,desc, BSM_METHODCALL);
         }
       }
     }
+
 }

@@ -279,7 +279,7 @@ public class JVMInterpreterTests {
             print(f());
             """));
   }
-/*
+
   @Tag("Q13") @Test
   public void createAnObject() {
     assertEquals("""
@@ -326,7 +326,7 @@ public class JVMInterpreterTests {
                   b: print('b')
                 };"""));
   }
-  
+
   @Tag("Q15") @Test
   public void objectGetAFieldValue() {
     assertEquals(
@@ -375,7 +375,7 @@ public class JVMInterpreterTests {
                 print(f(obj));
                 """));
   }
-  
+
   @Tag("Q17") @Test
   public void objectCallAMethod() {
     assertEquals(
@@ -411,5 +411,5 @@ public class JVMInterpreterTests {
                 print(fun(object2));
                 """));
   }
-  */
+
 }
